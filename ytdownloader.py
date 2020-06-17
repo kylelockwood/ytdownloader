@@ -1,8 +1,6 @@
 #! python3
 
-
 import os, sys
-import tkinter as tk
 from pytube import YouTube
 
 OUTPATH = 'C:' + os.environ["HOMEPATH"] + '\\Desktop'
@@ -11,11 +9,13 @@ OUTPATH = 'C:' + os.environ["HOMEPATH"] + '\\Desktop'
 
 def main():
     link = get_inputs()
-    yt = YouTube(link)
-     
+    try:
+        yt = YouTube(link)
+    except KeyError:
+        sys.exit(f'Error: video could not be extracted due to copyright encryption.')
     print(yt.title)
     streams = list(yt.streams)
-    # op_list = options_dict(streams) # for future gui options
+    op_list = options_dict(streams) # for future gui options
     choice = choose_download(streams)
     download_video(yt, choice)
     print('\nDone')
@@ -25,9 +25,10 @@ def get_inputs():
     try:
         link = sys.argv[1]
         if not link.startswith('https://www.youtu'):
-            sys.exit('Please enter a vailid YouTube URL')
-    except:
-        sys.exit('Missing YouTube URL.')
+            if not link.startswith('https://youtu'):
+                sys.exit('Please enter a vailid YouTube URL')
+    except Exception as e:
+        sys.exit(f'Missing YouTube URL. Error: {e}')
     return link
 
 def replace_all(text, dic):
@@ -93,11 +94,8 @@ def download_video(ytobj, choice):
     except Exception as e:
         print(f'Connection Error: {e}')
 
-def create_gui(text):
-    window = tk.Tk()
-    window.title('YouTube Downloader')
-    label = tk.Label(window, text=text)
-    window.mainloop()
+    except Exception as e:
+        print(f'Connection Error: {e}')
 
 if __name__ == '__main__':
     main()
