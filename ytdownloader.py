@@ -1,13 +1,14 @@
 #! python3
 
 """ 
-Downloads youtube video form a list of stream optioans
+Downloads youtube video form a list of stream options
 Muxes audio stream when video stream contains no audio
+Requires ffmpeg: https://ffmpeg.zeranoe.com/builds/
+    Must be added to Path environment variable
 """
 
-import os, sys, subprocess, time
+import os, sys, subprocess
 from pytube import YouTube
-
 
 HELP = 'Usage: ytdownloader <YouTube URL>'
 OUTPATH = 'C:' + os.environ["HOMEPATH"] + '\\Desktop'
@@ -19,7 +20,7 @@ def main():
     try:
         print('Loading...')
         yt = YouTube(link)
-        if yt.title == 'YouTube':
+        if yt.title == 'YouTube': # Default title returned if error, reinitalizing the object usually corrects this
             while yt.title == 'YouTube':
                 yt = YouTube(link)
     except KeyError:
