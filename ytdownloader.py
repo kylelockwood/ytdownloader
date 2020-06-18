@@ -1,5 +1,10 @@
 #! python3
 
+""" 
+Downloads youtube video form a list of stream optioans
+Muxes audio stream when video stream contains no audio
+"""
+
 import os, sys, subprocess, time
 from pytube import YouTube
 
