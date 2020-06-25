@@ -14,6 +14,7 @@ HELP = 'Usage: ytdownloader <YouTube URL>'
 OUTPATH = 'C:' + os.environ["HOMEPATH"] + '\\Desktop'
 
 # TODO Refactor as class
+# TODO include ffmpeg in ytdownloader dir and call from there?
 
 def main():
     link = get_inputs()
@@ -108,7 +109,7 @@ def on_progress(stream, chunk, bytes_remaining):
 
 def download_video(ytobj, choice):
     try:
-        ytobj.register_on_progress_callback(on_progress) # Progress bar
+        ytobj.register_on_progress_callback(on_progress) # Initialize download progress output
         ytobj.streams[choice].download(OUTPATH)
     except Exception as e:
         print(f'Connection Error: {e}')
@@ -120,8 +121,9 @@ def check_audio(filename):
     audio_present = os.popen(cmd).read()
     if audio_present != '':
         return True
-    print('\nNo audio present in video file.')
-    return False
+    else:
+        print('\nNo audio present in video file.')
+        return False
 
 def download_audio(ytobj, stream_list):
     # Find audio stream

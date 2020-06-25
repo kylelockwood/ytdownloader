@@ -3,7 +3,7 @@
 GUI : Downloads YouTube video or audio dependent on user parameters
 from a list of available resolutions and formats.
 """
-import os, sys
+import os, sys, subprocess
 import tkinter as tk
 import threading
 import time
@@ -14,6 +14,14 @@ from tkinter import messagebox
 from tkinter import ttk
 from pytube import YouTube
 
+# pyinstaller --onefile -n YTDownloader --windowed --icon=logo.ico ytdownloader_1.1.py
+# For some reason the icon doesn't work, might need to remove this command when compiling
+
+# Currently requires ffmpeg to be installed
+# TODO ffmpeg -i cpv.mp4 -i cpa.mp4 -c:v copy -c:a aac av.mp4
+# TODO find python module way of muxing audio stream as to not require users to install ffmpeg
+# TODO can include ffmpeg in directory?
+
 
 class YTDownloader():
     def __init__(self):
@@ -22,6 +30,7 @@ class YTDownloader():
         self.filesize = None
         self.choice = None
         self.options = None
+        self.codec = None
         self.video_lists = []
         self.audio_lists = []
         self.outpath = 'C:' + os.environ["HOMEPATH"] + '\\Desktop'
@@ -37,7 +46,7 @@ class YTDownloader():
         # Window
         self.window = tk.Tk()
         self.window.title('YouTube Downloader')
-        self.window.geometry('480x240')
+        self.window.geometry('480x230')
 
         # Labels
         url_label = tk.Label(self.window, text='YouTube URL', height=2, width=12)
@@ -193,6 +202,7 @@ class YTDownloader():
         res = self.res_combo.get()
         fps = self.fps_combo.get()
         av = self.av_rad.get()
+        self.codec = mime.split('/')[1]
         
         # Compare stream options with combo_box choices
         for option in self.options:
@@ -220,6 +230,10 @@ class YTDownloader():
         self.progressbar['value'] = progInt
         self.load_percent.config(text=progress)
         #print(f'Downloading... {progress}', end='\r', flush=True)
+
+    def __reset_progress_bar__(self):
+        self.progressbar['value'] = 0
+        self.load_percent.config(text='')
     
     def download_video(self):
         try:
@@ -227,10 +241,62 @@ class YTDownloader():
             #print('Downloading... Done')
             self.load_percent.config(text='Complete')
             time.sleep(1)
-            self.progressbar['value'] = 0
-            self.load_percent.config(text='')
+            self.__reset_progress_bar__()
+            if self.check_audio() is False:
+                self.download_audio()
         except Exception as e:
             messagebox.showinfo('Download Error', f'Failed to download. {e}')    
+
+    def check_audio(self):
+        # Checks if the downloaded video contains an audio track, returns boolean
+        cmd = 'ffprobe -i "' + self.outpath + '\\' + self.yt.title + '.' + self.codec + '" -show_streams -select_streams a -loglevel error'
+        audio_present = os.popen(cmd).read()
+        if audio_present != '':
+            return True
+        else:
+            print('\nNo audio present in video file.')
+            return False
+
+    def download_audio(self):
+        # Find audio stream
+        self.load_percent.config(text='Downloading audio')
+        time.sleep(1)
+        choice = None
+        for stream in self.options:
+            try:
+                if stream['mime_type'] == 'audio/mp4' and stream['acodec'].startswith('mp4a'):
+                    choice = self.options.index(stream)
+            except IndexError:
+                continue
+        if choice is None:
+            sys.exit('\nCould not find audio file for muxing.')
+        else:
+            # Download audio
+            #print('Downloading audio...')
+            self.__reset_progress_bar__()
+            self.yt.streams[choice].download(filename='_missing_audio')
+            self.mux_av()
+            self.load_percent.config(text='Complete')
+            time.sleep(1)
+            self.__reset_progress_bar__()
+
+    def mux_av(self):
+        # Create temp vid file
+        #print('Muxing audio...')
+        if os.path.isfile(self.outpath + '\\_video_no_audio.mp4'):
+            os.remove(self.outpath + '\\_video_no_audio.mp4')
+        vidfile = self.yt.title + '.' + self.codec
+        os.rename(r'' + self.outpath + '\\' + vidfile, r''+ self.outpath + '\\_video_no_audio.mp4')
+        
+        # Mux the temp video and audio files
+        cmd = 'ffmpeg -i "' + self.outpath + '\\_video_no_audio.mp4" -i _missing_audio.mp4 -c:v copy -c:a aac "' + self.outpath + '\\' + vidfile + '"'
+        FNULL = open(os.devnull, 'w') # Supress console output of ffmpeg module
+        subprocess.call(cmd, stdout=FNULL, stderr=subprocess.STDOUT)
+        
+        # Remove temp files
+        os.remove(self.outpath + '\\_video_no_audio.mp4')
+        os.remove('_missing_audio.mp4')
+        #print('Done')
 
 def options_dict(stream_list):
     # Create a list of dicts from stream items string
@@ -268,6 +334,7 @@ def combo_list(dct, key):
         except KeyError:
             pass
     return t_list
+
 
 if __name__ == '__main__':
     app = YTDownloader()
