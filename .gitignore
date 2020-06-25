@@ -1,6 +1,0 @@
-*.ico
-*.png
-*.bat
-*.spec
-build/*
-dist/*
